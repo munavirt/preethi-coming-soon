@@ -30,25 +30,15 @@ export default function FinalScene({
         className="font-serif font-light italic text-xl sm:text-2xl md:text-3xl text-ivory/80 text-center mt-4 sm:mt-6 leading-[1.3]"
         style={{ opacity: 0 }}
       >
-        A new chapter is being woven.
+        Our online store is coming soon.
       </p>
-<<<<<<< HEAD
-      <p
-        ref={metaRef}
-        className="font-sans text-[10px] sm:text-xs tracking-editorial uppercase text-ivory/60 mt-8 sm:mt-10"
-        style={{ opacity: 0 }}
-      >
-        Coming Soon · 2027
-      </p>
-=======
 
->>>>>>> a5fcf8d (second commit trying preethi content)
       <p
         ref={noteRef}
         className="font-sans text-[10px] sm:text-xs tracking-editorial-sm text-ivory/50 mt-3 sm:mt-4 text-center max-w-xs"
         style={{ opacity: 0 }}
       >
-        A new digital experience is on its way.
+        See you online.
       </p>
     </section>
   );
