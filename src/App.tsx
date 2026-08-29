@@ -85,48 +85,42 @@ function App() {
       <div ref={silk1Wrap} className="absolute inset-0 z-10" aria-hidden="true">
         <div
           ref={silk1Root}
-          className="absolute inset-0 will-change-clip"
+          className="absolute inset-0"
           style={{ display: 'none' }}
         >
           <SilkFabric variant="unfold-left" />
-          <div className="absolute inset-0 silk-grain pointer-events-none opacity-40 mix-blend-overlay" />
         </div>
       </div>
 
       {/* ── Silk layer 2 (second unfold, resting) ── */}
-      <div ref={silk2Wrap} className="absolute inset-0 z-10 will-change-transform" aria-hidden="true">
+      <div ref={silk2Wrap} className="absolute inset-0 z-10" aria-hidden="true">
         <div
           ref={silk2Root}
-          className="absolute inset-0 will-change-clip"
+          className="absolute inset-0"
           style={{ display: 'none' }}
         >
           <SilkFabric variant="unfold-diagonal" />
-          <div className="absolute inset-0 silk-grain pointer-events-none opacity-40 mix-blend-overlay" />
         </div>
       </div>
 
       {/* ── Scene 01: The Silence ── */}
       <IntroScene brandRef={introBrand} labelRef={introLabel} />
 
-      {/* ── Scene 04: Woven with tradition ── */}
+      {/* ── Scene 04: Silk has always been our thing ── */}
       <StatementScene
         headingRef={stmt1Heading}
         subRef={stmt1Sub}
-<<<<<<< HEAD
-        heading="Woven with tradition."
-        sub="Crafted through generations."
-=======
         heading="Fashion for every generation.."
         sub="Now we're bringing more of it online."
->>>>>>> a5fcf8d (second commit trying preethi content)
         over="silk"
       />
 
-      {/* ── Scene 06: Reimagined for tomorrow ── */}
+      {/* ── Scene 06: Your favourites, online soon ── */}
       <StatementScene
         headingRef={stmt2Heading}
         subRef={stmt2Sub}
-        heading="Reimagined for tomorrow."
+        heading="Your favourites, online store."
+        sub="Browse from wherever you are."
         over="ivory"
       />
 
