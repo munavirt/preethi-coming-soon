@@ -20,8 +20,8 @@ export default function StatementScene({
   sub,
   over = 'silk',
 }: StatementSceneProps) {
-  const headingColor = over === 'silk' ? 'text-ivory' : 'text-charcoal';
-  const subColor = over === 'silk' ? 'text-ivory/70' : 'text-charcoal-400';
+  const headingColor = over === 'silk' ? 'text-ivory' : 'text-crimson';
+  const subColor = over === 'silk' ? 'text-ivory/70' : 'text-crimson/80';
 
   return (
     <section className="absolute inset-0 z-30 flex flex-col items-center justify-center px-6">

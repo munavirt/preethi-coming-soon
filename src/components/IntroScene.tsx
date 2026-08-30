@@ -13,14 +13,14 @@ export default function IntroScene({ brandRef, labelRef }: IntroSceneProps) {
     <section className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6">
       <p
         ref={labelRef}
-        className="font-sans text-[10px] sm:text-xs tracking-editorial uppercase text-charcoal-300 mb-6 sm:mb-8"
+        className="font-sans text-[10px] sm:text-xs tracking-editorial uppercase text-crimson/70 mb-6 sm:mb-8"
         style={{ opacity: 0 }}
       >
         Coming Soon
       </p>
       <h1
         ref={brandRef}
-        className="font-serif font-light text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-brand text-charcoal text-center leading-[1.1]"
+        className="font-serif font-light text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-brand text-crimson text-center leading-[1.1]"
         style={{ opacity: 0 }}
       >
         Preethi Silks

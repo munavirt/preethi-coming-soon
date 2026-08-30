@@ -148,7 +148,7 @@ export function buildMasterTimeline(refs: SilkRefs): gsap.core.Timeline {
     )
     .to(
       [refs.headerBrand.current, refs.headerSoon.current],
-      { color: '#171514', duration: 1.5, ease: EASE_SLOW },
+      { color: '#8B1118', duration: 1.5, ease: EASE_SLOW },
       '<'
     )
     .set(refs.silk1Root.current, { display: 'none' });
@@ -278,7 +278,7 @@ export function buildReducedTimeline(refs: SilkRefs): gsap.core.Timeline {
     .to(refs.stmt1Sub.current, { opacity: 0, duration: 0.6 }, '<')
     // Hide silk 1, return header to charcoal for the ivory statement
     .set(refs.silk1Root.current, { display: 'none' })
-    .to([refs.headerBrand.current, refs.headerSoon.current], { color: '#171514', duration: 0.4 }, '<')
+    .to([refs.headerBrand.current, refs.headerSoon.current], { color: '#8B1118', duration: 0.4 }, '<')
     .to(refs.stmt2Heading.current, { opacity: 1, duration: 0.8 })
     .to(refs.stmt2Sub.current, { opacity: 1, duration: 0.6 }, '<')
     .to({}, { duration: 2 })
