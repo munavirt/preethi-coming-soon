@@ -1,296 +1,155 @@
 import gsap from 'gsap';
 
-export interface SilkRefs {
+export interface MasterTimelineRefs {
   // Header
   headerBrand: React.RefObject<HTMLDivElement>;
   headerSoon: React.RefObject<HTMLDivElement>;
-  // Intro
-  introBrand: React.RefObject<HTMLHeadingElement>;
-  introLabel: React.RefObject<HTMLParagraphElement>;
-  // Silk layers — first unfold
-  silk1Root: React.RefObject<HTMLDivElement>;
-  silk1Body: Element | null;
-  silk1Sheen: Element | null;
-  // Statement 1 — over silk
-  stmt1Heading: React.RefObject<HTMLHeadingElement>;
-  stmt1Sub: React.RefObject<HTMLParagraphElement>;
-  // Statement 2 — over ivory
-  stmt2Heading: React.RefObject<HTMLHeadingElement>;
-  stmt2Sub: React.RefObject<HTMLParagraphElement>;
-  // Silk layers — second unfold
-  silk2Root: React.RefObject<HTMLDivElement>;
-  silk2Body: Element | null;
-  silk2Sheen: Element | null;
-  // Final
+  // Editorial headline sequence
+  headline1: React.RefObject<HTMLHeadingElement>;
+  headline2: React.RefObject<HTMLHeadingElement>;
+  headline3: React.RefObject<HTMLHeadingElement>;
+  // Final brand scene
   finalBrand: React.RefObject<HTMLHeadingElement>;
-  finalMessage: React.RefObject<HTMLParagraphElement>;
-  finalMeta: React.RefObject<HTMLParagraphElement>;
-  finalNote: React.RefObject<HTMLParagraphElement>;
+  finalTagline: React.RefObject<HTMLParagraphElement>;
+  finalSubtext: React.RefObject<HTMLParagraphElement>;
 }
 
-const EASE_SLOW = 'power2.inOut';
-const EASE_CINE = 'power3.inOut';
-const EASE_EXPO = 'expo.inOut';
+const EASE_OUT = 'power2.out';
+const EASE_IN = 'power2.in';
+const EASE_CINE = 'power3.out';
 
 /**
- * Builds the master GSAP timeline — the full cinematic sequence:
- *  1. Intro fade          2. Typography reveal
- *  3. Thread entrance     4. Silk unfold
- *  5. Statement reveal    6. Silk fold-away
- *  7. White-space pause   8. Second statement
- *  9. Second silk unfold   10. Brand reveal
- * 11. Final message       12. Idle state
+ * Builds the master GSAP timeline matching Telrah's visual reference and timestamps:
  *
- * The silk reveal uses clip-path: inset() so the fabric is *revealed*
- * rather than stretched — like cloth being unfolded.
+ *  0.0s – 0.8s : Header elements fade in (Preethi Silks top-left, COMING SOON top-right)
+ *  1.0s – 3.8s : Headline 1 — "Elegance through generations." (reveal -> hold at 2s-3s -> fade out)
+ *  3.7s – 5.9s : Headline 2 — "Designed for elegance." (reveal -> hold at 4s-5s -> fade out)
+ *  5.8s – 8.0s : Headline 3 — "Crafted for *unforgettable* moments." (reveal -> hold at 6s-7s -> fade out)
+ *  7.8s – 9.2s : Centered Brand Wordmark — "PREETHI SILKS" smooth editorial reveal
+ *  8.8s – 10.0s: Italic Tagline — "*An elegant new chapter is on its way.*"
+ *  9.6s – 10.8s: Secondary line — "We’re preparing a new online experience for you..."
+ * 11.0s – 13.0s+: Tranquil settled state on pure white canvas
  */
-export function buildMasterTimeline(refs: SilkRefs): gsap.core.Timeline {
-  const tl = gsap.timeline({ defaults: { ease: EASE_SLOW } });
+export function buildMasterTimeline(refs: MasterTimelineRefs): gsap.core.Timeline {
+  const tl = gsap.timeline();
 
-  // ── 1. INTRO FADE ──────────────────────────────────────────────
-  tl.to(refs.headerBrand.current, { opacity: 1, duration: 2.2, ease: EASE_CINE }, 0)
-    .to(refs.headerSoon.current, { opacity: 1, duration: 2.2, ease: EASE_CINE }, 0.4)
-    .fromTo(
-      refs.introLabel.current,
-      { opacity: 0, filter: 'blur(8px)' },
-      { opacity: 1, filter: 'blur(0px)', duration: 2.5, ease: EASE_EXPO },
-      0.6
-    )
-    .fromTo(
-      refs.introBrand.current,
-      { opacity: 0, filter: 'blur(8px)', y: 12 },
-      { opacity: 1, filter: 'blur(0px)', y: 0, duration: 3, ease: EASE_EXPO },
-      1
-    );
-
-  // ── 2. HOLD (silence) ──────────────────────────────────────────
-  tl.to({}, { duration: 1.8 });
-
-  // ── 3. THREAD ENTRANCE ─────────────────────────────────────────
-  // A thin sliver of silk enters from the left via clip-path.
-  tl.set(refs.silk1Root.current, {
-    display: 'block',
-    clipPath: 'inset(0 100% 0 0)',
-    opacity: 0,
-  }).to(
-    refs.silk1Root.current,
-    {
-      opacity: 1,
-      clipPath: 'inset(0 96% 0 0)',
-      duration: 1.6,
-      ease: EASE_CINE,
-    },
-    '+=0.2'
+  // Initial resets to prevent any flashes
+  tl.set(
+    [
+      refs.headerBrand.current,
+      refs.headerSoon.current,
+      refs.headline1.current,
+      refs.headline2.current,
+      refs.headline3.current,
+      refs.finalBrand.current,
+      refs.finalTagline.current,
+      refs.finalSubtext.current,
+    ],
+    { opacity: 0 }
   );
 
-  // ── 4. SILK UNFOLD ─────────────────────────────────────────────
-  // The fabric reveals across the viewport via clip-path. The sheen
-  // sweeps across simultaneously. Intro text fades out as silk overtakes.
-  tl.to(refs.silk1Root.current, {
-    clipPath: 'inset(0 0% 0 0)',
-    duration: 3.2,
-    ease: EASE_EXPO,
-  })
-    .to(
-      refs.silk1Sheen,
-      { attr: { x: 1100 }, duration: 3.2, ease: EASE_SLOW },
-      '<'
-    )
-    .to(
-      [refs.introBrand.current, refs.introLabel.current],
-      { opacity: 0, filter: 'blur(6px)', duration: 1.2, ease: EASE_CINE },
-      '<'
-    )
-    .to(
-      [refs.headerBrand.current, refs.headerSoon.current],
-      { color: '#F8F6F1', duration: 1.5, ease: EASE_SLOW },
-      '<'
-    );
-
-  // ── 5. STATEMENT REVEAL — "Woven with tradition." ─────────────
-  tl.fromTo(
-    refs.stmt1Heading.current,
-    { opacity: 0, filter: 'blur(6px)', y: 18 },
-    { opacity: 1, filter: 'blur(0px)', y: 0, duration: 2.4, ease: EASE_EXPO },
-    '-=0.8'
-  ).fromTo(
-    refs.stmt1Sub.current,
-    { opacity: 0, y: 10 },
-    { opacity: 1, y: 0, duration: 1.8, ease: EASE_CINE },
-    '-=1.2'
-  );
-
-  // Hold the statement
-  tl.to({}, { duration: 2.2 });
-
-  // ── 6. SILK FOLD-AWAY ──────────────────────────────────────────
-  // Fabric is pulled away to the right. Text exits with it.
+  // ── 0. HEADER FADE IN (0.0s - 0.8s) ───────────────────────────
   tl.to(
-    refs.stmt1Heading.current,
-    { opacity: 0, filter: 'blur(6px)', y: -14, duration: 1.6, ease: EASE_CINE },
-    '+=0.3'
+    refs.headerBrand.current,
+    { opacity: 1, duration: 0.9, ease: EASE_OUT },
+    0.1
   ).to(
-    refs.stmt1Sub.current,
-    { opacity: 0, duration: 1.2, ease: EASE_CINE },
-    '<'
+    refs.headerSoon.current,
+    { opacity: 1, duration: 0.9, ease: EASE_OUT },
+    0.2
   );
 
-  // Fold away to the right — clip-path closes from the left
-  tl.to(refs.silk1Root.current, {
-    clipPath: 'inset(0 0 0 100%)',
-    duration: 2.4,
-    ease: EASE_EXPO,
-  })
-    .to(
-      refs.silk1Sheen,
-      { attr: { x: 1600 }, duration: 2.4, ease: EASE_SLOW },
-      '<'
-    )
-    .to(
-      [refs.headerBrand.current, refs.headerSoon.current],
-      { color: '#8B1118', duration: 1.5, ease: EASE_SLOW },
-      '<'
-    )
-    .set(refs.silk1Root.current, { display: 'none' });
-
-  // ── 7. WHITE-SPACE PAUSE ───────────────────────────────────────
-  tl.to({}, { duration: 1.6 });
-
-  // ── 8. SECOND STATEMENT — "Reimagined for tomorrow." ──────────
+  // ── 1. HEADLINE 1: "Elegance through generations." (1.0s - 3.8s) ──────
   tl.fromTo(
-    refs.stmt2Heading.current,
-    { opacity: 0, filter: 'blur(8px)', y: 16 },
-    { opacity: 1, filter: 'blur(0px)', y: 0, duration: 2.6, ease: EASE_EXPO }
-  ).fromTo(
-    refs.stmt2Sub.current,
-    { opacity: 0, y: 10 },
-    { opacity: 1, y: 0, duration: 1.8, ease: EASE_CINE },
-    '-=1.4'
+    refs.headline1.current,
+    { opacity: 0, y: 8, filter: 'blur(5px)' },
+    { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.1, ease: EASE_OUT },
+    1.0
+  ).to(
+    refs.headline1.current,
+    { opacity: 0, y: -6, filter: 'blur(4px)', duration: 0.7, ease: EASE_IN },
+    3.1
   );
 
-  // Hold
-  tl.to({}, { duration: 2 });
-
-  // Exit statement 2 as the second silk arrives
-  tl.to(
-    [refs.stmt2Heading.current, refs.stmt2Sub.current],
-    { opacity: 0, filter: 'blur(6px)', y: -12, duration: 1.4, ease: EASE_CINE },
-    '+=0.2'
+  // ── 2. HEADLINE 2: "Designed for elegance." (3.7s - 5.9s) ─────
+  tl.fromTo(
+    refs.headline2.current,
+    { opacity: 0, y: 8, filter: 'blur(5px)' },
+    { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.1, ease: EASE_OUT },
+    3.7
+  ).to(
+    refs.headline2.current,
+    { opacity: 0, y: -6, filter: 'blur(4px)', duration: 0.7, ease: EASE_IN },
+    5.2
   );
 
-  // ── 9. SECOND SILK UNFOLD ─────────────────────────────────────
-  // More confident, diagonal feel — reveals from the left with a
-  // slight vertical asymmetry for a more dramatic, sweeping motion.
-  tl.set(refs.silk2Root.current, {
-    display: 'block',
-    clipPath: 'inset(0 100% 0 0)',
-    opacity: 0,
-  })
-    .to(refs.silk2Root.current, {
-      opacity: 1,
-      clipPath: 'inset(0 95% 0 0)',
-      duration: 1.2,
-      ease: EASE_CINE,
-    })
-    .to(refs.silk2Root.current, {
-      clipPath: 'inset(0 0% 0 0)',
-      duration: 3.4,
-      ease: EASE_EXPO,
-    })
-    .to(
-      refs.silk2Sheen,
-      { attr: { x: 1100 }, duration: 3.4, ease: EASE_SLOW },
-      '<'
-    )
-    .to(
-      [refs.headerBrand.current, refs.headerSoon.current],
-      { color: '#F8F6F1', duration: 1.5, ease: EASE_SLOW },
-      '<'
-    );
+  // ── 3. HEADLINE 3: "Crafted for unforgettable moments." (5.8s - 8.0s)
+  tl.fromTo(
+    refs.headline3.current,
+    { opacity: 0, y: 8, filter: 'blur(5px)' },
+    { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.1, ease: EASE_OUT },
+    5.8
+  ).to(
+    refs.headline3.current,
+    { opacity: 0, y: -6, filter: 'blur(4px)', duration: 0.7, ease: EASE_IN },
+    7.3
+  );
 
-  // ── 10. BRAND REVEAL ──────────────────────────────────────────
-  // Brand name appears large over the second silk.
+  // ── 4. FINAL COMPOSITION REVEAL (7.8s - 10.8s) ────────────────
+  // Main brand wordmark transitions in right as headline 3 completes exit
   tl.fromTo(
     refs.finalBrand.current,
-    { opacity: 0, filter: 'blur(8px)', y: 20 },
-    { opacity: 1, filter: 'blur(0px)', y: 0, duration: 2.6, ease: EASE_EXPO },
-    '-=1.2'
+    { opacity: 0, y: 12, filter: 'blur(6px)' },
+    { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.4, ease: EASE_CINE },
+    7.8
   );
 
-  // ── 11. FINAL MESSAGE ──────────────────────────────────────────
+  // Italic tagline smoothly appears below the wordmark
   tl.fromTo(
-    refs.finalMessage.current,
-    { opacity: 0, filter: 'blur(6px)', y: 14 },
-    { opacity: 1, filter: 'blur(0px)', y: 0, duration: 2.2, ease: EASE_EXPO },
-    '-=1'
-  )
-    .fromTo(
-      refs.finalMeta.current,
-      { opacity: 0, y: 8 },
-      { opacity: 1, y: 0, duration: 1.6, ease: EASE_CINE },
-      '-=1.2'
-    )
-    .fromTo(
-      refs.finalNote.current,
-      { opacity: 0, y: 8 },
-      { opacity: 1, y: 0, duration: 1.6, ease: EASE_CINE },
-      '-=1'
-    );
+    refs.finalTagline.current,
+    { opacity: 0, y: 8, filter: 'blur(3px)' },
+    { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.2, ease: EASE_OUT },
+    8.8
+  );
 
-  // ── 12. IDLE STATE ─────────────────────────────────────────────
-  // The silk gently breathes — a very slow, subtle sheen drift.
-  tl.to(
-    refs.silk2Sheen,
-    {
-      attr: { x: 1400 },
-      duration: 8,
-      ease: 'none',
-      repeat: -1,
-      yoyo: true,
-    },
-    '+=0.5'
+  // Secondary text appears beneath
+  tl.fromTo(
+    refs.finalSubtext.current,
+    { opacity: 0, y: 6 },
+    { opacity: 1, y: 0, duration: 1.1, ease: EASE_OUT },
+    9.6
   );
 
   return tl;
 }
 
 /**
- * A gentle reduced-motion timeline — fades only, no fabric animation.
- * Reveals the final composition directly with static silk backgrounds.
+ * Reduced-motion timeline: skips rapid changing sequence and delivers
+ * an immediate, calm fade-in of the settled brand presentation.
  */
-export function buildReducedTimeline(refs: SilkRefs): gsap.core.Timeline {
-  const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+export function buildReducedTimeline(refs: MasterTimelineRefs): gsap.core.Timeline {
+  const tl = gsap.timeline();
 
-  tl.to(refs.headerBrand.current, { opacity: 1, duration: 0.8 }, 0)
-    .to(refs.headerSoon.current, { opacity: 1, duration: 0.8 }, 0.2)
-    .to(refs.introLabel.current, { opacity: 1, duration: 0.8 }, 0.4)
-    .to(refs.introBrand.current, { opacity: 1, duration: 1 }, 0.6)
-    .to({}, { duration: 1.5 })
-    .to(refs.introBrand.current, { opacity: 0, duration: 0.6 })
-    .to(refs.introLabel.current, { opacity: 0, duration: 0.6 }, '<')
-    // Show silk 1 as a static background for the first statement
-    .set(refs.silk1Root.current, { display: 'block', clipPath: 'inset(0 0% 0 0)', opacity: 1 })
-    .to([refs.headerBrand.current, refs.headerSoon.current], { color: '#F8F6F1', duration: 0.4 }, '<')
-    .to(refs.stmt1Heading.current, { opacity: 1, duration: 0.8 })
-    .to(refs.stmt1Sub.current, { opacity: 1, duration: 0.6 }, '<')
-    .to({}, { duration: 2 })
-    .to(refs.stmt1Heading.current, { opacity: 0, duration: 0.6 })
-    .to(refs.stmt1Sub.current, { opacity: 0, duration: 0.6 }, '<')
-    // Hide silk 1, return header to charcoal for the ivory statement
-    .set(refs.silk1Root.current, { display: 'none' })
-    .to([refs.headerBrand.current, refs.headerSoon.current], { color: '#8B1118', duration: 0.4 }, '<')
-    .to(refs.stmt2Heading.current, { opacity: 1, duration: 0.8 })
-    .to(refs.stmt2Sub.current, { opacity: 1, duration: 0.6 }, '<')
-    .to({}, { duration: 2 })
-    .to(refs.stmt2Heading.current, { opacity: 0, duration: 0.6 })
-    .to(refs.stmt2Sub.current, { opacity: 0, duration: 0.6 }, '<')
-    // Show silk 2 as a static background for the final composition
-    .set(refs.silk2Root.current, { display: 'block', clipPath: 'inset(0 0% 0 0)', opacity: 1 })
-    .to([refs.headerBrand.current, refs.headerSoon.current], { color: '#F8F6F1', duration: 0.4 }, '<')
-    .to(refs.finalBrand.current, { opacity: 1, duration: 0.8 })
-    .to(refs.finalMessage.current, { opacity: 1, duration: 0.6 }, '<')
-    .to(refs.finalMeta.current, { opacity: 1, duration: 0.6 }, '-=0.4')
-    .to(refs.finalNote.current, { opacity: 1, duration: 0.6 }, '-=0.4');
+  tl.to(
+    [refs.headerBrand.current, refs.headerSoon.current],
+    { opacity: 1, duration: 0.6, stagger: 0.1 },
+    0
+  ).fromTo(
+    refs.finalBrand.current,
+    { opacity: 0 },
+    { opacity: 1, duration: 0.8 },
+    0.3
+  ).fromTo(
+    refs.finalTagline.current,
+    { opacity: 0 },
+    { opacity: 1, duration: 0.8 },
+    0.6
+  ).fromTo(
+    refs.finalSubtext.current,
+    { opacity: 0 },
+    { opacity: 1, duration: 0.8 },
+    0.8
+  );
 
   return tl;
 }
