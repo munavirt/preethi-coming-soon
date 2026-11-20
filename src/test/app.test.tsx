@@ -45,8 +45,10 @@ describe("App", () => {
     const footer = document.querySelector("footer");
     expect(footer).not.toBeNull();
     expect(within(footer!).queryByText(/to be confirmed/i)).toBeNull();
-    expect(within(footer!).getByText("+91 98470 12345")).toBeDefined();
-    expect(within(footer!).getByText("care@preethisilks.com")).toBeDefined();
+    expect(within(footer!).getByText("9072210999")).toBeDefined();
+    expect(within(footer!).getByRole("link", { name: "9072210999" }).getAttribute("href")).toBe("tel:9072210999");
+    expect(within(footer!).getByText("info@preethisilks.in")).toBeDefined();
+    expect(within(footer!).getByRole("link", { name: "info@preethisilks.in" }).getAttribute("href")).toBe("mailto:info@preethisilks.in");
     expect(within(footer!).getByText(/Feroke, Kozhikode/i)).toBeDefined();
     expect(within(footer!).getByRole("link", { name: "Instagram" })).toBeDefined();
     const creditLink = within(footer!).getByRole("link", { name: "Promocraft" });

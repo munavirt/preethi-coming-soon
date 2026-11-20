@@ -382,9 +382,9 @@ export const contactIntro = {
 /** Adding a value here turns on its link in the contact section and the footer. */
 export const contact = {
   /** With country code, e.g. "+91 00000 00000". */
-  phone: "+91 98470 12345",
+  phone: "9072210999",
   whatsapp: "+91 98470 12345",
-  email: "care@preethisilks.com",
+  email: "info@preethisilks.in",
   address: "Main Road, Feroke, Kozhikode, Kerala 673631",
 };
 
