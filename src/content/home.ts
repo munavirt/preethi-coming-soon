@@ -22,6 +22,8 @@ import textileFull from "@/assets/home/textile-full.webp";
 import textileGreen from "@/assets/home/textile-green.webp";
 import mensWear from "@/assets/collections/mens-wear.webp";
 import womensWear from "@/assets/collections/womens-wear.webp";
+import kidsWear from "@/assets/collections/kids-wear.webp"
+
 
 export type Picture = {
   src: string;
@@ -148,6 +150,12 @@ export const collections: Collection[] = [
     short: "Kids",
     note: "Festive and everyday wear",
     href: "#stores",
+    image: {
+      src: kidsWear,
+      alt: "Kids Wear, traditional and contemporary fashion at Preethi Silks",
+      width: 1024,
+      height: 1536,
+    },
   },
 ];
 
@@ -295,12 +303,18 @@ export type StoreLocation = {
   /** Full postal address, once verified. */
   address?: string | null;
   phone?: string | null;
+  hours?: { days: string; time: string } | null;
   /** A verified Google Maps link for the showroom itself. */
   mapUrl?: string | null;
   /** Places the town's marker. It marks the town, never the showroom's exact entrance. */
   coordinates?: { lat: number; lng: number } | null;
   /** Which side of its marker the town's name sits on, so close towns don't overlap. */
   labelSide?: "left" | "right" | "above" | "below";
+};
+
+const defaultShowroomHours = {
+  days: "Monday – Sunday",
+  time: "9:00 AM – 9:00 PM",
 };
 
 /**
@@ -319,6 +333,8 @@ export const presenceLocations: StoreLocation[] = [
     region: "malabar",
     coordinates: { lat: 11.1803, lng: 75.8389 },
     labelSide: "left",
+    phone: "9061745999",
+    hours: defaultShowroomHours,
   },
   {
     id: "kondotty",
@@ -328,6 +344,8 @@ export const presenceLocations: StoreLocation[] = [
     region: "malabar",
     coordinates: { lat: 11.1475, lng: 75.9622 },
     labelSide: "above",
+    phone: "8891367888",
+    hours: defaultShowroomHours,
   },
   {
     id: "malappuram",
@@ -337,6 +355,8 @@ export const presenceLocations: StoreLocation[] = [
     region: "malabar",
     coordinates: { lat: 11.051, lng: 76.0711 },
     labelSide: "below",
+    phone: "9645707999",
+    hours: defaultShowroomHours,
   },
   {
     id: "palakkad",
@@ -345,6 +365,8 @@ export const presenceLocations: StoreLocation[] = [
     type: "preethi",
     region: "malabar",
     coordinates: { lat: 10.7867, lng: 76.6548 },
+    phone: "9995848299",
+    hours: defaultShowroomHours,
   },
   {
     id: "kuttiady",
@@ -353,6 +375,7 @@ export const presenceLocations: StoreLocation[] = [
     type: "preethi",
     region: "malabar",
     coordinates: { lat: 11.6533, lng: 75.7558 },
+    hours: defaultShowroomHours,
   },
 ];
 
@@ -369,7 +392,6 @@ export const stores = {
   title: "A Preethi Silks Experience, Closer to You.",
   body: "Find your nearest showroom and discover collections for every occasion.",
   region: "Kerala",
-  help: { label: "ask our team", href: "#footer" },
 };
 
 export const contactIntro = {

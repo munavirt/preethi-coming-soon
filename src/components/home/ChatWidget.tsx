@@ -1,55 +1,21 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { brand, contact } from "@/content/home";
-import { sendChatMessage, type ChatResult } from "@/lib/chat.functions";
+import {
+  buildHandoffText,
+  FALLBACK_REPLY,
+  formatTime,
+  WELCOME_MESSAGE,
+  WELCOME_SUGGESTIONS,
+  type ChatMessage,
+  type MessageAction,
+} from "@/lib/chat-assistant";
+import { sendChatMessage } from "@/lib/chat.functions";
 import { whatsappUrl } from "@/lib/whatsapp";
 
-type Message = { role: "user" | "assistant"; content: string };
-type ChatError = Extract<ChatResult, { ok: false }>["error"];
-
-/** Session storage only: the conversation ends with the tab, and nothing is kept on a server. */
-const STORAGE_KEY = "preethi-silks-chat";
+const STORAGE_KEY = "preethi-silks-chat-v2";
 const MAX_LENGTH = 1000;
-/** A long conversation is better continued with the team. */
 const MAX_QUESTIONS = 30;
-
-const ERRORS: Record<ChatError, string> = {
-  not_configured: "Our assistant isn’t available right now. Please contact our team instead.",
-  busy: "We’re getting a lot of questions just now. Please try again in a moment.",
-  unavailable: "Sorry, something went wrong on our side. Please try again.",
-};
-
-/** The pre-filled WhatsApp message: the latest question first, then what led to it. */
-function handoffText(messages: Message[]) {
-  const questions = messages.filter((message) => message.role === "user").map((m) => m.content);
-  const clip = (text: string, length: number) =>
-    text.length > length ? `${text.slice(0, length - 1)}…` : text;
-  const latest = questions.at(-1) ?? "";
-  const earlier = questions.slice(-4, -1);
-  return [
-    `Hello ${brand.name}, I was chatting with the assistant on your website.`,
-    "",
-    `My question: ${clip(latest, 500)}`,
-    ...(earlier.length
-      ? ["", "Earlier I asked:", ...earlier.map((question) => `- ${clip(question, 200)}`)]
-      : []),
-  ].join("\n");
-}
-
-/** Replies are plain text. Stray markdown emphasis is removed rather than shown as asterisks. */
-function Reply({ text }: { text: string }) {
-  return (
-    <>
-      {text
-        .replace(/\*\*(.+?)\*\*/g, "$1")
-        .split(/\n+/)
-        .filter(Boolean)
-        .map((line, index) => (
-          <p key={index}>{line}</p>
-        ))}
-    </>
-  );
-}
 
 function ChatIcon() {
   return (
@@ -60,13 +26,45 @@ function ChatIcon() {
   );
 }
 
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" width="16" height="16">
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.3-1.39c1.45.79 3.08 1.21 4.69 1.21 5.46 0 9.91-4.45 9.91-9.91A9.91 9.91 0 0 0 12.04 2zm5.82 14.13c-.24.67-1.4 1.24-1.93 1.32-.49.07-1.12.1-3.23-.77-2.69-1.11-4.41-3.86-4.54-4.04-.13-.18-1.09-1.45-1.09-2.77 0-1.31.69-1.96.93-2.22.25-.26.54-.33.72-.33.18 0 .36 0 .52.01.17.01.4-.06.62.48.24.57.81 1.99.88 2.14.07.15.12.33.02.53-.1.2-.15.33-.3.51-.15.17-.32.39-.46.52-.15.15-.31.31-.13.62.18.31.79 1.31 1.7 2.12 1.17 1.04 2.16 1.37 2.47 1.52.31.15.49.13.67-.08.18-.2.78-.91.99-1.22.21-.31.42-.26.71-.15.29.11 1.84.87 2.15 1.03.32.15.53.23.61.36.08.14.08.79-.16 1.46z" />
+    </svg>
+  );
+}
+
+/** Plain text formatter that handles paragraph lines cleanly */
+function MessageContent({ text }: { text: string }) {
+  const paragraphs = text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .split(/\n{2,}/)
+    .filter(Boolean);
+
+  return (
+    <>
+      {paragraphs.map((p, pIdx) => {
+        const lines = p.split("\n").filter(Boolean);
+        return (
+          <p key={pIdx}>
+            {lines.map((line, lIdx) => (
+              <span key={lIdx}>
+                {line}
+                {lIdx < lines.length - 1 ? <br /> : null}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
 export function ChatWidget() {
-  const send = sendChatMessage;
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<ChatError | null>(null);
   const [restored, setRestored] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
@@ -76,9 +74,9 @@ export function ChatWidget() {
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) setMessages(JSON.parse(saved) as Message[]);
+      if (saved) setMessages(JSON.parse(saved) as ChatMessage[]);
     } catch {
-      // Storage can be blocked. The chat then simply starts fresh.
+      // Storage can be blocked. Starts fresh.
     }
     setRestored(true);
   }, []);
@@ -88,46 +86,120 @@ export function ChatWidget() {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     } catch {
-      // Not being able to keep the history only matters after a reload.
+      // Storage failure only matters on reload
     }
   }, [messages, restored]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
-    // The launcher is hidden while the chat is open, so it can only take focus after closing.
     else if (returnFocus.current) launcherRef.current?.focus();
     returnFocus.current = false;
   }, [open]);
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending, error, open]);
+    if (logRef.current) {
+      if (typeof logRef.current.scrollTo === "function") {
+        logRef.current.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
+      } else {
+        logRef.current.scrollTop = logRef.current.scrollHeight;
+      }
+    }
+  }, [messages, pending, open]);
 
-  const ask = async (history: Message[]) => {
+  const sendQuery = async (queryText: string, currentHistory: ChatMessage[]) => {
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      role: "user",
+      content: queryText,
+      timestamp: formatTime(),
+    };
+
+    const newHistory = [...currentHistory, userMessage];
+    setMessages(newHistory);
     setPending(true);
-    setError(null);
+
     try {
-      const result = await send({ data: { messages: history } });
-      if (result.ok) setMessages([...history, { role: "assistant", content: result.reply }]);
-      else setError(result.error);
+      const result = await sendChatMessage({
+        data: {
+          messages: newHistory.map((m) => ({ role: m.role, content: m.content })),
+        },
+      });
+
+      if (result.ok) {
+        const assistantMessage: ChatMessage = {
+          id: `asst-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          role: "assistant",
+          content: result.reply,
+          timestamp: formatTime(),
+          actions: result.actions,
+        };
+        setMessages([...newHistory, assistantMessage]);
+      } else {
+        // Fallback gracefully without technical errors
+        const fallbackMessage: ChatMessage = {
+          id: `asst-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          role: "assistant",
+          content: FALLBACK_REPLY,
+          timestamp: formatTime(),
+          actions: [
+            {
+              type: "whatsapp",
+              label: "Continue on WhatsApp",
+              text: buildHandoffText(newHistory),
+            },
+            {
+              type: "tel",
+              label: `Call ${contact.phone}`,
+              phone: contact.phone,
+            },
+            {
+              type: "link",
+              label: "Contact Our Team",
+              href: "#footer",
+            },
+          ],
+        };
+        setMessages([...newHistory, fallbackMessage]);
+      }
     } catch {
-      setError("unavailable");
+      const fallbackMessage: ChatMessage = {
+        id: `asst-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        role: "assistant",
+        content: FALLBACK_REPLY,
+        timestamp: formatTime(),
+        actions: [
+          {
+            type: "whatsapp",
+            label: "Continue on WhatsApp",
+            text: buildHandoffText(newHistory),
+          },
+          {
+            type: "tel",
+            label: `Call ${contact.phone}`,
+            phone: contact.phone,
+          },
+          {
+            type: "link",
+            label: "Contact Our Team",
+            href: "#footer",
+          },
+        ],
+      };
+      setMessages([...newHistory, fallbackMessage]);
     } finally {
       setPending(false);
     }
   };
 
-  const questionCount = messages.filter((message) => message.role === "user").length;
+  const questionCount = messages.filter((m) => m.role === "user").length;
   const atLimit = questionCount >= MAX_QUESTIONS;
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     const text = draft.trim();
     if (!text || pending || atLimit) return;
-    const history = [...messages, { role: "user" as const, content: text }];
-    setMessages(history);
     setDraft("");
-    void ask(history);
+    void sendQuery(text, messages);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -142,7 +214,22 @@ export function ChatWidget() {
     setOpen(false);
   };
 
-  const lastIsReply = messages.at(-1)?.role === "assistant" && !pending;
+  const handleNewChat = () => {
+    setMessages([]);
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignored
+    }
+  };
+
+  const handleActionClick = (action: MessageAction) => {
+    if (action.type === "quick-reply") {
+      void sendQuery(action.query, messages);
+    } else if (action.type === "link" && !action.external) {
+      close();
+    }
+  };
 
   return (
     <div className="chat">
@@ -154,25 +241,35 @@ export function ChatWidget() {
           onKeyDown={(event) => event.key === "Escape" && close()}
         >
           <header className="chat__head">
-            <div>
-              <h2 id="chat-title">{brand.name}</h2>
-              <p>Ask us anything about our collections and showrooms</p>
+            <div className="chat__brand-meta">
+              <div className="chat__avatar" aria-hidden="true">
+                PS
+              </div>
+              <div>
+                <h2 id="chat-title">{brand.name}</h2>
+                <p className="chat__subtitle">
+                  <span className="chat__status-dot" aria-hidden="true" />
+                  Retail Shopping Assistant
+                </p>
+              </div>
             </div>
             <div className="chat__head-actions">
               {messages.length ? (
                 <button
                   type="button"
-                  className="chat__clear"
-                  onClick={() => {
-                    setMessages([]);
-                    setError(null);
-                  }}
+                  className="chat__action-btn chat__action-btn--clear"
+                  onClick={handleNewChat}
                   disabled={pending}
                 >
-                  New chat
+                  New Chat
                 </button>
               ) : null}
-              <button type="button" className="chat__close" onClick={close} aria-label="Close chat">
+              <button
+                type="button"
+                className="chat__close"
+                onClick={close}
+                aria-label="Close chat"
+              >
                 <svg viewBox="0 0 16 16" aria-hidden="true" stroke="currentColor" strokeWidth="1.6">
                   <path d="m3 3 10 10M13 3 3 13" />
                 </svg>
@@ -181,74 +278,126 @@ export function ChatWidget() {
           </header>
 
           <div className="chat__log" ref={logRef} role="log" aria-live="polite">
+            {/* Initial Welcome Experience */}
             {messages.length === 0 ? (
-              <div className="chat__empty">
-                <p className="chat__bubble chat__bubble--bot">
-                  Hello, and welcome to {brand.name}. How can we help you today? Ask about our
-                  collections, the Grand Festival Sale or visiting a showroom.
-                </p>
-                <p className="chat__note">
-                  Answers come from an AI assistant and may not be perfect. Our team can confirm
-                  anything important.
-                </p>
+              <div className="chat__welcome">
+                <div className="chat__bubble chat__bubble--bot">
+                  <div className="chat__sender-tag">Preethi Silks Assistant</div>
+                  <MessageContent text={WELCOME_MESSAGE} />
+                  <span className="chat__time">{formatTime()}</span>
+                </div>
+
+                <div className="chat__suggestions-block">
+                  <p className="chat__suggestions-heading">Quick assistance:</p>
+                  <div className="chat__suggestions">
+                    {WELCOME_SUGGESTIONS.map((suggestion) => (
+                      <button
+                        key={suggestion.label}
+                        type="button"
+                        className="chat__suggestion"
+                        onClick={() => handleActionClick(suggestion)}
+                        disabled={pending}
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : null}
 
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`chat__bubble chat__bubble--${message.role === "user" ? "user" : "bot"}`}
-              >
-                <span className="sr-only">
-                  {message.role === "user" ? "You:" : `${brand.name}:`}
-                </span>
-                {message.role === "user" ? (
-                  <p>{message.content}</p>
-                ) : (
-                  <Reply text={message.content} />
-                )}
-              </div>
-            ))}
+            {/* Conversation Messages */}
+            {messages.map((message) => {
+              const isUser = message.role === "user";
+              return (
+                <div
+                  key={message.id}
+                  className={`chat__message-row chat__message-row--${isUser ? "user" : "bot"}`}
+                >
+                  <div
+                    className={`chat__bubble chat__bubble--${isUser ? "user" : "bot"}`}
+                  >
+                    {!isUser ? <div className="chat__sender-tag">Preethi Silks Assistant</div> : null}
+                    <MessageContent text={message.content} />
+                    <span className="chat__time">{message.timestamp}</span>
+                  </div>
 
+                  {/* Render message actions if present */}
+                  {message.actions && message.actions.length > 0 ? (
+                    <div className="chat__actions">
+                      {message.actions.map((action, actionIdx) => {
+                        if (action.type === "quick-reply") {
+                          return (
+                            <button
+                              key={actionIdx}
+                              type="button"
+                              className="chat__action-chip"
+                              onClick={() => handleActionClick(action)}
+                              disabled={pending}
+                            >
+                              {action.label}
+                            </button>
+                          );
+                        }
+
+                        if (action.type === "tel") {
+                          return (
+                            <a
+                              key={actionIdx}
+                              href={`tel:${action.phone.replace(/[^\d+]/g, "")}`}
+                              className="chat__action-chip chat__action-chip--tel"
+                            >
+                              <span aria-hidden="true">📞</span> {action.label}
+                            </a>
+                          );
+                        }
+
+                        if (action.type === "whatsapp") {
+                          return (
+                            <a
+                              key={actionIdx}
+                              href={whatsappUrl(contact.whatsapp, action.text ?? buildHandoffText(messages))}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="chat__action-chip chat__action-chip--wa"
+                            >
+                              <WhatsAppIcon /> {action.label}
+                            </a>
+                          );
+                        }
+
+                        if (action.type === "link") {
+                          return (
+                            <a
+                              key={actionIdx}
+                              href={action.href}
+                              target={action.external ? "_blank" : undefined}
+                              rel={action.external ? "noopener noreferrer" : undefined}
+                              className="chat__action-chip chat__action-chip--link"
+                              onClick={!action.external ? close : undefined}
+                            >
+                              {action.label} <span aria-hidden="true">↗</span>
+                            </a>
+                          );
+                        }
+
+                        return null;
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {/* Subtle Loading Indicator */}
             {pending ? (
-              <div className="chat__typing" aria-label={`${brand.name} is typing`}>
+              <div className="chat__typing" aria-label="Preethi Silks is typing">
                 <span className="chat__dots" aria-hidden="true">
                   <i />
                   <i />
                   <i />
                 </span>
-                {brand.name} is typing…
-              </div>
-            ) : null}
-
-            {error ? (
-              <div className="chat__error" role="alert">
-                <p>{ERRORS[error]}</p>
-                {error === "not_configured" ? null : (
-                  <button type="button" onClick={() => void ask(messages)}>
-                    Try again
-                  </button>
-                )}
-              </div>
-            ) : null}
-
-            {lastIsReply || error === "not_configured" ? (
-              <div className="chat__handoff">
-                <p>Want to know more? Our team will be happy to help.</p>
-                {contact.whatsapp ? (
-                  <a
-                    className="chat__wa"
-                    href={whatsappUrl(contact.whatsapp, handoffText(messages))}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Continue on WhatsApp
-                  </a>
-                ) : (
-                  <a className="chat__wa" href="#footer" onClick={close}>
-                    Contact our team
-                  </a>
-                )}
+                <span className="chat__typing-text">Preethi Silks is typing…</span>
               </div>
             ) : null}
           </div>
@@ -265,8 +414,8 @@ export function ChatWidget() {
               maxLength={MAX_LENGTH}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={atLimit ? "Please continue with our team" : "Type your question…"}
-              disabled={atLimit}
+              placeholder={atLimit ? "Please continue with our team" : "Ask about collections, offers, stores…"}
+              disabled={atLimit || pending}
             />
             <button
               type="submit"

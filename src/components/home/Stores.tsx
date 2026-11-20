@@ -10,24 +10,23 @@ import { Eyebrow } from "./primitives";
  * search for the showroom by name, never a pin presented as its exact entrance.
  */
 function mapAction(location: StoreLocation) {
-  if (location.mapUrl) return { href: location.mapUrl, label: "Get directions" };
+  if (location.mapUrl) return { href: location.mapUrl, label: "Google Maps" };
   if (location.address) {
     const destination = encodeURIComponent(`${location.name}, ${location.address}`);
     return {
       href: `https://www.google.com/maps/dir/?api=1&destination=${destination}`,
-      label: "Get directions",
+      label: "Google Maps",
     };
   }
   const query = encodeURIComponent(`${location.business} ${location.name}, Kerala`);
   return {
     href: `https://www.google.com/maps/search/?api=1&query=${query}`,
-    label: "Search on Google Maps",
+    label: "Google Maps",
   };
 }
 
 function LocationDetails({ location, id }: { location: StoreLocation; id: string }) {
   const map = mapAction(location);
-  const exact = Boolean(location.mapUrl || location.address);
   return (
     <div className="stores__details" id={id}>
       <p className="stores__detail-name">
@@ -39,18 +38,16 @@ function LocationDetails({ location, id }: { location: StoreLocation; id: string
           <a href={`tel:${location.phone.replace(/[^\d+]/g, "")}`}>{location.phone}</a>
         </p>
       ) : null}
+      {location.hours ? (
+        <div className="stores__hours">
+          <p className="stores__hours-label">Opening Hours</p>
+          <p>{location.hours.days}</p>
+          <p>{location.hours.time}</p>
+        </div>
+      ) : null}
       <a className="stores__link" href={map.href} target="_blank" rel="noopener noreferrer">
         {map.label} <span aria-hidden="true">↗</span>
       </a>
-      {exact ? null : (
-        <p className="stores__note">
-          For the exact address,{" "}
-          <a href={stores.help.href} className="stores__help">
-            {stores.help.label}
-          </a>
-          .
-        </p>
-      )}
     </div>
   );
 }

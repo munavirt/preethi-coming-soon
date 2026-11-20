@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { resolveRetailAssistantReply, type MessageAction } from "./chat-assistant";
 import { buildSystemPrompt } from "./chat-knowledge";
 
 /** AI chat completions endpoint. */
@@ -9,7 +10,8 @@ const DEFAULT_MODEL = "gpt-4o-mini";
 const HISTORY_LIMIT = 12;
 
 export type ChatResult =
-  { ok: true; reply: string } | { ok: false; error: "not_configured" | "busy" | "unavailable" };
+  | { ok: true; reply: string; actions?: MessageAction[] }
+  | { ok: false; error: "busy" | "unavailable" };
 
 export const chatInput = z.object({
   messages: z
@@ -39,13 +41,17 @@ export async function sendChatMessage({
     return { ok: false, error: "unavailable" };
   }
 
+  const latestQuery = parsed.data.messages.at(-1)?.content ?? "";
+
   const apiKey =
     (typeof import.meta !== "undefined" && import.meta.env?.["VITE_AI_API_KEY"]) ||
     (typeof process !== "undefined" && process.env?.["AI_API_KEY"]) ||
     "";
 
+  // If no AI key is configured, use the verified local retail knowledge assistant
   if (!apiKey) {
-    return { ok: false, error: "not_configured" };
+    const local = resolveRetailAssistantReply(latestQuery, parsed.data.messages);
+    return { ok: true, reply: local.content, actions: local.actions };
   }
 
   try {
@@ -66,22 +72,36 @@ export async function sendChatMessage({
           ...parsed.data.messages.slice(-HISTORY_LIMIT),
         ],
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(15_000),
     });
 
-    if (response.status === 429) return { ok: false, error: "busy" };
+    if (response.status === 429) {
+      // High volume: fallback gracefully to local verified knowledge base
+      const local = resolveRetailAssistantReply(latestQuery, parsed.data.messages);
+      return { ok: true, reply: local.content, actions: local.actions };
+    }
+
     if (!response.ok) {
-      console.error(`Chat: AI gateway answered ${response.status}`, await response.text());
-      return { ok: false, error: "unavailable" };
+      console.warn(`Chat: AI gateway status ${response.status}, using verified local knowledge base`);
+      const local = resolveRetailAssistantReply(latestQuery, parsed.data.messages);
+      return { ok: true, reply: local.content, actions: local.actions };
     }
 
     const payload = (await response.json()) as {
       choices?: { message?: { content?: string } }[];
     };
     const reply = payload.choices?.[0]?.message?.content?.trim();
-    return reply ? { ok: true, reply } : { ok: false, error: "unavailable" };
+    if (reply) {
+      // Attach contextual actions if relevant
+      const local = resolveRetailAssistantReply(latestQuery, parsed.data.messages);
+      return { ok: true, reply, actions: local.actions };
+    }
+
+    const local = resolveRetailAssistantReply(latestQuery, parsed.data.messages);
+    return { ok: true, reply: local.content, actions: local.actions };
   } catch (error) {
-    console.error("Chat: AI gateway request failed", error);
-    return { ok: false, error: "unavailable" };
+    console.warn("Chat: AI request fallback to verified local knowledge base", error);
+    const local = resolveRetailAssistantReply(latestQuery, parsed.data.messages);
+    return { ok: true, reply: local.content, actions: local.actions };
   }
 }

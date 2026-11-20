@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import App from "@/App";
@@ -154,5 +154,52 @@ describe("App", () => {
     const findStoreBtn = document.querySelector(".header__cta");
     expect(findStoreBtn).not.toBeNull();
     expect(findStoreBtn!.getAttribute("href")).toBe("#stores");
+  });
+
+  it("renders showrooms with correct contact details, Google Maps buttons, and no address disclaimer", () => {
+    render(<App />);
+
+    const storesSection = document.getElementById("stores");
+    expect(storesSection).not.toBeNull();
+
+    const expectedShowrooms = [
+      { name: "Feroke", phone: "9061745999" },
+      { name: "Kondotty", phone: "8891367888" },
+      { name: "Malappuram", phone: "9645707999" },
+      { name: "Palakkad", phone: "9995848299" },
+      { name: "Kuttiady", phone: null },
+    ];
+
+    const listElement = storesSection!.querySelector(".stores__list") as HTMLElement;
+    expect(listElement).not.toBeNull();
+
+    expectedShowrooms.forEach(({ name, phone }) => {
+      const rowButton = within(listElement).getByRole("button", { name: new RegExp(name, "i") });
+      fireEvent.click(rowButton);
+
+      // Verify no address disclaimer
+      expect(within(storesSection!).queryByText(/For the exact address, ask our team/i)).toBeNull();
+      expect(within(storesSection!).queryByText(/ask our team/i)).toBeNull();
+
+      // Verify operating hours
+      expect(within(storesSection!).getByText("Opening Hours")).toBeDefined();
+      expect(within(storesSection!).getByText("Monday – Sunday")).toBeDefined();
+      expect(within(storesSection!).getByText("9:00 AM – 9:00 PM")).toBeDefined();
+
+      // Verify Google Maps button
+      const mapsLink = within(storesSection!).getByRole("link", { name: /Google Maps/i });
+      expect(mapsLink).toBeDefined();
+      expect(mapsLink.getAttribute("href")).toContain("https://www.google.com/maps/");
+      expect(mapsLink.getAttribute("target")).toBe("_blank");
+
+      // Verify phone number
+      if (phone) {
+        const phoneLink = within(storesSection!).getByRole("link", { name: phone });
+        expect(phoneLink).toBeDefined();
+        expect(phoneLink.getAttribute("href")).toBe(`tel:${phone}`);
+      } else {
+        expect(within(storesSection!).queryByRole("link", { name: /^\d{10}$/ })).toBeNull();
+      }
+    });
   });
 });
