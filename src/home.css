@@ -349,8 +349,12 @@ section[id] {
 }
 
 .logo img {
+  /* Original logo height; the extra width extends the red panel (#d73b32 is the logo's edge red). */
+  display: block;
+  width: 180px;
   height: 44px;
-  width: auto;
+  object-fit: contain;
+  background-color: #d73b32;
 }
 
 .logo__a {
@@ -2453,6 +2457,11 @@ a.crow:hover .crow__arrow {
     font-size: 1.625rem;
   }
 
+  .logo img {
+    width: 155px;
+    height: 38px;
+  }
+
   .cc {
     --w: 300px;
     --h: 400px;
@@ -2675,6 +2684,11 @@ a.crow:hover .crow__arrow {
   .logo__a {
     font-size: 1.375rem;
     letter-spacing: 0.14em;
+  }
+
+  .logo img {
+    width: 130px;
+    height: 34px;
   }
 
   .announce {

@@ -23,6 +23,7 @@ import textileGreen from "@/assets/home/textile-green.webp";
 import mensWear from "@/assets/collections/mens-wear.webp";
 import womensWear from "@/assets/collections/womens-wear.webp";
 import kidsWear from "@/assets/collections/kids-wear.webp"
+import logoImage from "@/assets/preethi-logo.webp";
 
 
 export type Picture = {
@@ -37,8 +38,8 @@ export type LinkItem = { label: string; href: string };
 
 export const brand = {
   name: "Preethi Silks",
-  /** Add the official logo here, e.g. { src, alt, width, height }. Until then the name is typeset. */
-  logo: null as Picture | null,
+  /** Official logo (red panel, cropped to its edges). Set to null to fall back to the typeset name. */
+  logo: { src: logoImage, alt: "Preethi Silks", width: 647, height: 240 } as Picture | null,
   description: "Silk sarees, bridal wear and fashion for the whole family.",
 };
 
